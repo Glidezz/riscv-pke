@@ -43,6 +43,11 @@ int printu(const char* s, ...) {
   return do_user_call(SYS_user_print, (uint64)buf, n, 0, 0, 0, 0, 0);
 }
 
+int print_backtrace(int depth) {
+  return do_user_call(SYS_print_backtrace, depth, 0, 0, 0, 0, 0, 0);
+}
+
+
 //
 // applications need to call exit to quit execution.
 //
