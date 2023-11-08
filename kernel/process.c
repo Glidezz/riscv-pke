@@ -32,6 +32,9 @@ process procs[NPROC];
 // current points to the currently running user-mode application.
 process* current = NULL;
 
+process* blocked_queue = NULL;
+
+
 //
 // switch to a user-mode process
 //
@@ -253,4 +256,89 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+
+int do_wait(int pid)
+{
+  int found = 0;
+  if (pid == -1) {
+    for (int i = 0; i < NPROC; i++){
+        process p = procs[i];
+        if (p.parent == current) {
+            found = 1;
+            if (p.status == ZOMBIE) {
+                p.status = FREE;
+                return i;
+            }
+        }
+    }
+    if (found == 0)
+        return -1;  // 当前父进程无子进程
+    else {
+        insert_to_blocked_queue(current);  // 子进程未执行完 父进程需要阻塞
+        schedule();
+        return -2;
+    }
+  } else if (pid < NPROC) {     //找到pid对应的进程
+    if (procs[pid].parent != current)
+        return -1;              // pid对应的进程不是当前进程的子进程
+    else {
+      if (procs[pid].status == ZOMBIE) {
+          procs[pid].status = FREE;
+          return pid;
+      }else {
+          insert_to_blocked_queue(current);
+          schedule();
+          return -2;
+      }
+    }
+  } else
+      return -1;  // 非法输入
+}
+
+void insert_to_blocked_queue(process *proc) 
+{
+  if( blocked_queue == NULL ){
+      proc->status = BLOCKED;
+      proc->queue_next = NULL;
+      blocked_queue = proc;
+      return;
+  }
+
+  process *p;
+
+  for (p = blocked_queue; p->queue_next != NULL; p = p->queue_next)
+      if (p == proc)
+          return;  // 已经在队列中
+
+  //在队列中 return
+  if( p==proc )
+      return;
+
+  p->queue_next = proc;
+  proc->status = BLOCKED;
+  proc->queue_next = NULL;
+  return;
+}
+
+void awake(process* proc)
+{
+    if (blocked_queue == NULL)
+        return;
+    if (blocked_queue == proc->parent) {
+        process* wakeup = blocked_queue;  // 被唤醒的进程
+        blocked_queue = blocked_queue->queue_next;
+        wakeup->status = READY;
+        insert_to_ready_queue(wakeup);
+        return;
+  }
+  for (process* p = blocked_queue; p->queue_next != NULL; p = p->queue_next)
+      if (p->queue_next == proc->parent) {
+          process* wakeup = p->queue_next;
+          p->queue_next = p->queue_next->queue_next;
+          wakeup->status = READY;
+          insert_to_ready_queue(wakeup);
+          return;
+      }
 }

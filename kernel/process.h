@@ -103,6 +103,9 @@ int free_process( process* proc );
 // fork a child from parent
 int do_fork(process* parent);
 
+int do_wait(int pid);
+void insert_to_blocked_queue(process* proc);
+void awake(process* proc);
 // current running process
 extern process* current;
 
