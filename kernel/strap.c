@@ -9,7 +9,6 @@
 #include "pmm.h"
 #include "vmm.h"
 #include "util/functions.h"
-
 #include "spike_interface/spike_utils.h"
 
 //
@@ -50,18 +49,23 @@ void handle_mtimer_trap() {
 // stval: the virtual address that causes pagefault when being accessed.
 //
 void handle_user_page_fault(uint64 mcause, uint64 sepc, uint64 stval) {
-  sprint("handle_page_fault: %lx\n", stval);
-  switch (mcause) {
+    sprint("handle_page_fault: %lx\n", stval);
+
+    // sprint("handle_page_fault: %lx  %x  %x  %x\n", stval,current->trapframe->kernel_sp   ,current->kstack ,current->trapframe->regs.sp);
+    switch (mcause) {
     case CAUSE_STORE_PAGE_FAULT:
       // TODO (lab2_3): implement the operations that solve the page fault to
       // dynamically increase application stack.
       // hint: first allocate a new physical page, and then, maps the new page to the
       // virtual address that causes the page fault.
       //panic( "You need to implement the operations that actually handle the page fault in lab2_3.\n" );
+      
+      if(stval < current->trapframe->regs.sp-PGSIZE)
+          panic("this address is not available!");
+
       stval = ROUNDDOWN(stval, PGSIZE);
       if (map_pages((pagetable_t)current->pagetable, stval, PGSIZE, (uint64)alloc_page(), prot_to_type(PROT_WRITE | PROT_READ, 1)) < 0)
           return;
-
       break;
     default:
       sprint("unknown page fault.\n");
