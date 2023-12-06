@@ -17,6 +17,39 @@
 
 #include "spike_interface/spike_utils.h"
 
+
+
+void fetch_absolute_path(char* relative_path,char* absolute_path) {
+  // current directory
+  struct dentry *p = current->pfiles->cwd;
+  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
+      p = p->parent;
+  while(p){
+      char t[MAX_DENTRY_NAME_LEN];
+      memset(t, '\0', MAX_DENTRY_NAME_LEN);
+      memcpy(t, absolute_path, strlen(absolute_path));
+      memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
+      memcpy(absolute_path, p->name, strlen(p->name));
+      if (p->parent != NULL) {
+          absolute_path[strlen(p->name)] = '/';
+          absolute_path[strlen(p->name) + 1] = '\0';
+    }
+    strcat(absolute_path, t);
+    p = p->parent;
+  }
+  if(relative_path[0]=='.' && relative_path[1]=='.')       // cd ../###
+      strcat(absolute_path, relative_path + 3);
+  else if (relative_path[0] == '.' && relative_path[1] != '.')
+      strcat(absolute_path, relative_path + 2);
+  else
+      strcat(absolute_path, relative_path);
+}
+
+
+
+
+
+
 //
 // implement the SYS_user_print syscall
 //
@@ -101,7 +134,14 @@ ssize_t sys_user_yield() {
 // open file
 //
 ssize_t sys_user_open(char *pathva, int flags) {
-  char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+    char *pathpa = (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+
+    if (pathpa[0] == '.') {
+        char absolute_path[MAX_DENTRY_NAME_LEN];
+        memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
+        fetch_absolute_path(pathpa, absolute_path);
+        return do_open(absolute_path, flags);
+    }
   return do_open(pathpa, flags);
 }
 
@@ -215,6 +255,49 @@ ssize_t sys_user_unlink(char * vfn){
   return do_unlink(pfn);
 }
 
+ssize_t sys_user_rcwd(char* pathva){
+    char *pathpa = (char *)user_va_to_pa((pagetable_t)(current->pagetable), (void *)pathva);
+    struct dentry *p = current->pfiles->cwd;
+    if (p->parent == NULL) {
+        strcpy(pathpa, "/");
+    }else{
+      while(p) {
+          char t[MAX_DENTRY_NAME_LEN];
+          memset(t, '\0', MAX_DENTRY_NAME_LEN);
+          memcpy(t, pathpa, strlen(pathpa));
+          memset(pathpa, '\0', MAX_DENTRY_NAME_LEN);
+          memcpy(pathpa, p->name, strlen(p->name));
+          if (p->parent != NULL) {
+              pathpa[strlen(p->name)] = '/';
+              pathpa[strlen(p->name) + 1] = '\0';
+      }
+      strcat(pathpa,t);
+      p=p->parent;
+    }
+    pathpa[strlen(pathpa)-1]='\0';
+  }
+  return 0;
+}
+
+
+
+ssize_t sys_user_ccwd(char *pathva){
+    char *pathpa = (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+    char new_path[MAX_DEVICE_NAME_LEN];
+    memset(new_path, '\0', MAX_DENTRY_NAME_LEN);
+    struct dentry *current_directory = current->pfiles->cwd;
+
+    // fetch pathname of new directory
+    fetch_absolute_path(pathpa, new_path);
+
+    // open the new directory
+    int fd = do_opendir(new_path);
+    // change the current directory to new path
+    current->pfiles->cwd = current->pfiles->opened_files[fd].f_dentry;
+    do_closedir(fd);
+    return 0;
+}
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -263,7 +346,11 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case SYS_user_rcwd:
+        return sys_user_rcwd((char *)a1);
+    case SYS_user_ccwd:
+        return sys_user_ccwd((char *)a1);
     default:
-      panic("Unknown syscall %ld \n", a0);
+        panic("Unknown syscall %ld \n", a0);
   }
 }
