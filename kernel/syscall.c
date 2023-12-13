@@ -19,25 +19,25 @@
 
 
 
-void fetch_absolute_path(char* relative_path,char* absolute_path) {
+void getAbsolutePath(char* relative_path,char* absolute_path) {
   // current directory
   struct dentry *p = current->pfiles->cwd;
   if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
       p = p->parent;
   while(p){
-      char t[MAX_DENTRY_NAME_LEN];
-      memset(t, '\0', MAX_DENTRY_NAME_LEN);
-      memcpy(t, absolute_path, strlen(absolute_path));
+      char tmp[MAX_DENTRY_NAME_LEN];
+      memset(tmp, '\0', MAX_DENTRY_NAME_LEN);
+      memcpy(tmp, absolute_path, strlen(absolute_path));
       memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
       memcpy(absolute_path, p->name, strlen(p->name));
       if (p->parent != NULL) {
           absolute_path[strlen(p->name)] = '/';
           absolute_path[strlen(p->name) + 1] = '\0';
     }
-    strcat(absolute_path, t);
+    strcat(absolute_path, tmp);
     p = p->parent;
   }
-  if(relative_path[0]=='.' && relative_path[1]=='.')       // cd ../###
+  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
       strcat(absolute_path, relative_path + 3);
   else if (relative_path[0] == '.' && relative_path[1] != '.')
       strcat(absolute_path, relative_path + 2);
@@ -139,7 +139,7 @@ ssize_t sys_user_open(char *pathva, int flags) {
     if (pathpa[0] == '.') {
         char absolute_path[MAX_DENTRY_NAME_LEN];
         memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
-        fetch_absolute_path(pathpa, absolute_path);
+        getAbsolutePath(pathpa, absolute_path);
         return do_open(absolute_path, flags);
     }
   return do_open(pathpa, flags);
@@ -262,16 +262,16 @@ ssize_t sys_user_rcwd(char* pathva){
         strcpy(pathpa, "/");
     }else{
       while(p) {
-          char t[MAX_DENTRY_NAME_LEN];
-          memset(t, '\0', MAX_DENTRY_NAME_LEN);
-          memcpy(t, pathpa, strlen(pathpa));
+          char tmp[MAX_DENTRY_NAME_LEN];
+          memset(tmp, '\0', MAX_DENTRY_NAME_LEN);
+          memcpy(tmp, pathpa, strlen(pathpa));
           memset(pathpa, '\0', MAX_DENTRY_NAME_LEN);
           memcpy(pathpa, p->name, strlen(p->name));
           if (p->parent != NULL) {
               pathpa[strlen(p->name)] = '/';
               pathpa[strlen(p->name) + 1] = '\0';
       }
-      strcat(pathpa,t);
+      strcat(pathpa,tmp);
       p=p->parent;
     }
     pathpa[strlen(pathpa)-1]='\0';
@@ -288,7 +288,7 @@ ssize_t sys_user_ccwd(char *pathva){
     struct dentry *current_directory = current->pfiles->cwd;
 
     // fetch pathname of new directory
-    fetch_absolute_path(pathpa, new_path);
+    getAbsolutePath(pathpa, new_path);
 
     // open the new directory
     int fd = do_opendir(new_path);
