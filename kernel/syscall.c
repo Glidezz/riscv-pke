@@ -19,30 +19,29 @@
 
 
 
-void getAbsolutePath(char* relative_path,char* absolute_path) {
-  // current directory
+void getAbsolutePath(char* relative_path,char* abspath) {
   struct dentry *p = current->pfiles->cwd;
-  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
+  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd 父目录
       p = p->parent;
   while(p){
       char tmp[MAX_DENTRY_NAME_LEN];
       memset(tmp, '\0', MAX_DENTRY_NAME_LEN);
-      memcpy(tmp, absolute_path, strlen(absolute_path));
-      memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
-      memcpy(absolute_path, p->name, strlen(p->name));
+      memcpy(tmp, abspath, strlen(abspath));
+      memset(abspath, '\0', MAX_DENTRY_NAME_LEN);
+      memcpy(abspath, p->name, strlen(p->name));
       if (p->parent != NULL) {
-          absolute_path[strlen(p->name)] = '/';
-          absolute_path[strlen(p->name) + 1] = '\0';
+          abspath[strlen(p->name)] = '/';
+          abspath[strlen(p->name) + 1] = '\0';
     }
-    strcat(absolute_path, tmp);
+    strcat(abspath, tmp);
     p = p->parent;
   }
   if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
-      strcat(absolute_path, relative_path + 3);
+      strcat(abspath, relative_path + 3);
   else if (relative_path[0] == '.' && relative_path[1] != '.')
-      strcat(absolute_path, relative_path + 2);
+      strcat(abspath, relative_path + 2);
   else
-      strcat(absolute_path, relative_path);
+      strcat(abspath, relative_path);
 }
 
 
@@ -135,7 +134,6 @@ ssize_t sys_user_yield() {
 //
 ssize_t sys_user_open(char *pathva, int flags) {
     char *pathpa = (char *)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
-
     if (pathpa[0] == '.') {
         char absolute_path[MAX_DENTRY_NAME_LEN];
         memset(absolute_path, '\0', MAX_DENTRY_NAME_LEN);
@@ -274,8 +272,8 @@ ssize_t sys_user_rcwd(char* pathva){
       strcat(pathpa,tmp);
       p=p->parent;
     }
-    pathpa[strlen(pathpa)-1]='\0';
-  }
+    pathpa[strlen(pathpa) - 1] = '\0';
+    }
   return 0;
 }
 
