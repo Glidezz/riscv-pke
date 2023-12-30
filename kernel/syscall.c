@@ -19,35 +19,35 @@
 
 
 
-void getAbsolutePath(char* relative_path,char* abspath) {
+void getAbsolutePath(char* relative_path, char* abspath) {
   struct dentry *p = current->pfiles->cwd;
-  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd 父目录
-      p = p->parent;
-  while(p){
-      char tmp[MAX_DENTRY_NAME_LEN];
-      memset(tmp, '\0', MAX_DENTRY_NAME_LEN);
-      memcpy(tmp, abspath, strlen(abspath));
-      memset(abspath, '\0', MAX_DENTRY_NAME_LEN);
-      memcpy(abspath, p->name, strlen(p->name));
-      if (p->parent != NULL) {
-          abspath[strlen(p->name)] = '/';
-          abspath[strlen(p->name) + 1] = '\0';
+    if (relative_path[0] == '.' && relative_path[1] == '.')  // cd 父目录
+        p = p->parent;
+    while (p) {
+        char tmp[MAX_DENTRY_NAME_LEN];
+        memset(tmp, '\0', MAX_DENTRY_NAME_LEN);
+        memcpy(tmp, abspath, strlen(abspath));
+        memset(abspath, '\0', MAX_DENTRY_NAME_LEN);
+        memcpy(abspath, p->name, strlen(p->name));
+        if (p->parent != NULL) {
+            abspath[strlen(p->name)] = '/';
+            abspath[strlen(p->name) + 1] = '\0';
+        }
+        strcat(abspath, tmp);
+        p = p->parent;
     }
-    strcat(abspath, tmp);
-    p = p->parent;
-  }
-  if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
-      strcat(abspath, relative_path + 3);
-  else if (relative_path[0] == '.' && relative_path[1] != '.')
-      strcat(abspath, relative_path + 2);
-  else
-      strcat(abspath, relative_path);
+  
+   
+    if (relative_path[0] == '.' && relative_path[1] == '.')  // cd ../###
+        strcat(abspath, relative_path + 3);
+    else if (relative_path[0] == '.' && relative_path[1] != '.')
+        strcat(abspath, relative_path + 2);
+    else
+        strcat(abspath, relative_path);
+    // sprint("    path %s\n", abspath);
+    if (abspath[strlen(abspath) - 1] == '/')
+        abspath[strlen(abspath) - 1] = '\0';
 }
-
-
-
-
-
 
 //
 // implement the SYS_user_print syscall
@@ -268,13 +268,15 @@ ssize_t sys_user_rcwd(char* pathva){
           if (p->parent != NULL) {
               pathpa[strlen(p->name)] = '/';
               pathpa[strlen(p->name) + 1] = '\0';
-      }
+          }
       strcat(pathpa,tmp);
-      p=p->parent;
-    }
+      p = p->parent;
+      }
     pathpa[strlen(pathpa) - 1] = '\0';
     }
-  return 0;
+    if (strlen(pathpa) > 1 &&  pathpa[strlen(pathpa) - 1] == '/' )
+        pathpa[strlen(pathpa) - 1] = '\0';
+    return 0;
 }
 
 
